@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PyroGuard — Fire Detection System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --safe-bg: #f8f9fb;
+            --safe-surface: #ffffff;
+            --safe-card: #ffffff;
+            --safe-text: #1a1d28;
+            --safe-text-secondary: #6b7280;
+            --safe-text-muted: #9ca3af;
+            --safe-border: #e5e7ec;
+            --safe-accent: #3b82f6;
+            --safe-accent-soft: #eff6ff;
+            --safe-green: #10b981;
+            --safe-green-soft: #ecfdf5;
+            --danger-bg: #fef2f2;
+            --danger-surface: #fff5f5;
+            --danger-card: #ffffff;
+            --danger-text: #1a1d28;
+            --danger-text-secondary: #6b7280;
+            --danger-border: #fecaca;
+            --danger-accent: #ef4444;
+            --danger-accent-soft: #fef2f2;
+            --radius-sm: 10px;
+            --radius-md: 16px;
+            --radius-lg: 22px;
+            --radius-xl: 28px;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.03);
+            --shadow-md: 0 4px 16px rgba(0,0,0,0.05), 0 2px 8px rgba(0,0,0,0.03);
+            --shadow-glow-danger: 0 0 50px rgba(239,68,68,0.18);
+            --transition: 0.35s cubic-bezier(0.25,0.1,0.25,1);
+            --font: 'Space Grotesk', system-ui, sans-serif;
+            --mono: 'JetBrains Mono', monospace;
+        }
+
+        .dark {
+            --safe-bg: #0f1117;
+            --safe-surface: #161822;
+            --safe-card: #1c1f2b;
+            --safe-text: #e8eaef;
+            --safe-text-secondary: #9da3b4;
+            --safe-text-muted: #6b7084;
+            --safe-border: #272a36;
+            --safe-accent: #5b9cf5;
+            --safe-accent-soft: #1a2332;
+            --safe-green: #34d399;
+            --safe-green-soft: #0f2f28;
+            --danger-bg: #1a1014;
+            --danger-surface: #1f1418;
+            --danger-card: #1c1f2b;
+            --danger-text: #e8eaef;
+            --danger-text-secondary: #9da3b4;
+            --danger-border: #3b2028;
+            --danger-accent: #f43f5e;
+            --danger-accent-soft: #2d1a20;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: var(--font);
+            background: var(--safe-bg);
+            color: var(--safe-text);
+            min-height: 100vh;
+            transition: background var(--transition), color var(--transition);
+            -webkit-font-smoothing: antialiased;
+            letter-spacing: -0.01em;
+            line-height: 1.5;
+        }
+
+        body.danger-mode { background: var(--danger-bg); }
+
+        .app { max-width: 1280px; margin: 0 auto; padding: 20px 24px 40px; }
+
+        /* ===== HEADER ===== */
+        .header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 14px 22px; background: var(--safe-surface);
+            border: 1px solid var(--safe-border); border-radius: var(--radius-lg);
+            margin-bottom: 20px; gap: 14px; flex-wrap: wrap;
+            transition: all var(--transition); box-shadow: var(--shadow-sm);
+        }
+        body.danger-mode .header { background: var(--danger-surface); border-color: var(--danger-border); }
+        .brand { display: flex; align-items: center; gap: 12px; }
+        .brand-icon { width: 38px; height: 38px; background: var(--safe-accent-soft); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; transition: all var(--transition); }
+        body.danger-mode .brand-icon { background: var(--danger-accent-soft); }
+        .brand-text h2 { font-size: 1.1rem; font-weight: 700; letter-spacing: -0.02em; }
+        .brand-text span { font-size: 0.7rem; color: var(--safe-text-muted); letter-spacing: 0.04em; font-weight: 500; }
+        .header-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .status-pill { display: flex; align-items: center; gap: 7px; padding: 7px 14px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.02em; background: var(--safe-accent-soft); color: var(--safe-accent); border: 1px solid transparent; transition: all var(--transition); }
+        body.danger-mode .status-pill { background: var(--danger-accent-soft); color: var(--danger-accent); }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--safe-green); box-shadow: 0 0 6px var(--safe-green); transition: all var(--transition); }
+        .status-dot.offline { background: #9ca3af; box-shadow: none; }
+        .status-dot.connecting { background: #f59e0b; box-shadow: 0 0 6px #f59e0b; animation: pulse 1.5s ease-in-out infinite; }
+        @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.4} }
+        .clock { font-family: var(--mono); font-size: 0.78rem; font-weight: 500; color: var(--safe-text-secondary); letter-spacing: 0.03em; }
+        .theme-switch { width: 42px; height: 24px; border-radius: 24px; background: var(--safe-border); cursor: pointer; position: relative; transition: all var(--transition); flex-shrink: 0; }
+        .theme-switch::after { content:''; position:absolute; top:2px; left:2px; width:20px; height:20px; background:#fff; border-radius:50%; transition: all var(--transition); box-shadow:0 1px 3px rgba(0,0,0,0.15); }
+        .dark .theme-switch::after { left:20px; background:#1c1f2b; }
+
+        /* ===== HERO ===== */
+        .hero { background: var(--safe-surface); border: 1px solid var(--safe-border); border-radius: var(--radius-xl); padding: 36px 32px; margin-bottom: 18px; text-align: center; transition: all var(--transition); box-shadow: var(--shadow-md); position: relative; overflow: hidden; }
+        body.danger-mode .hero { background: var(--danger-surface); border-color: var(--danger-border); box-shadow: var(--shadow-glow-danger); animation: heroShake 0.6s ease-in-out; }
+        @keyframes heroShake { 0%,100%{transform:translateX(0)}10%,50%,90%{transform:translateX(-3px)}30%,70%{transform:translateX(3px)} }
+        .hero-icon { font-size: 4rem; margin-bottom: 12px; transition: all var(--transition); display: inline-block; }
+        .hero-icon.safe-icon { animation: safeFloat 4s ease-in-out infinite; }
+        @keyframes safeFloat { 0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)} }
+        .hero-icon.danger-icon { animation: dangerPulse 0.8s ease-in-out infinite; }
+        @keyframes dangerPulse { 0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.15);opacity:0.8} }
+        .hero-status { font-size: 2.8rem; font-weight: 800; letter-spacing: -0.03em; transition: all var(--transition); }
+        .hero-status.safe { color: var(--safe-green); }
+        .hero-status.danger { color: var(--danger-accent); animation: textBlink 1s ease-in-out infinite; }
+        @keyframes textBlink { 0%,100%{opacity:1}50%{opacity:0.5} }
+        .hero-subtitle { font-size: 0.9rem; color: var(--safe-text-secondary); margin-top: 6px; font-weight: 400; letter-spacing: 0.02em; transition: color var(--transition); }
+        .hero-time { font-size: 0.72rem; color: var(--safe-text-muted); margin-top: 4px; font-family: var(--mono); }
+        .raw-data-box { margin-top: 12px; padding: 8px 16px; background: var(--safe-accent-soft); border: 1px solid var(--safe-border); border-radius: var(--radius-sm); font-size: 0.75rem; color: var(--safe-text-secondary); font-family: var(--mono); word-break: break-all; display: inline-block; max-width: 90%; }
+        body.danger-mode .raw-data-box { background: var(--danger-accent-soft); border-color: var(--danger-border); }
+        .firebase-status { font-size: 0.65rem; font-weight: 500; color: var(--safe-text-muted); text-align: center; margin-top: 4px; letter-spacing: 0.03em; }
+
+        /* ===== GRID ===== */
+        .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 14px; }
+        @media (max-width: 1024px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 600px) {
+            .grid { grid-template-columns: 1fr; }
+            .hero-status { font-size: 2rem; }
+            .hero-icon { font-size: 3rem; }
+            .hero { padding: 24px 16px; }
+            .header { padding: 10px 14px; }
+            .app { padding: 10px 12px 30px; }
+        }
+
+        .card { background: var(--safe-card); border: 1px solid var(--safe-border); border-radius: var(--radius-lg); padding: 20px 22px; transition: all var(--transition); box-shadow: var(--shadow-sm); }
+        body.danger-mode .card { border-color: var(--danger-border); }
+        .card-header { font-size: 0.68rem; font-weight: 600; color: var(--safe-text-muted); letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 14px; }
+
+        /* ===== SENSOR GRID ===== */
+        .sensor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .sensor-item { padding: 16px 14px; border-radius: var(--radius-md); background: var(--safe-bg); border: 1px solid var(--safe-border); text-align: center; transition: all var(--transition); }
+        body.danger-mode .sensor-item { background: var(--danger-bg); border-color: var(--danger-border); }
+        .sensor-item.active { border-color: var(--safe-accent); background: var(--safe-accent-soft); animation: sensorPulse 1.8s ease-in-out infinite; }
+        body.danger-mode .sensor-item.active { border-color: var(--danger-accent); background: var(--danger-accent-soft); animation: sensorPulseDanger 0.9s ease-in-out infinite; }
+        @keyframes sensorPulse { 0%,100%{box-shadow:0 0 0 0 rgba(59,130,246,0.2)}50%{box-shadow:0 0 0 10px rgba(59,130,246,0)} }
+        @keyframes sensorPulseDanger { 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0.3)}50%{box-shadow:0 0 0 14px rgba(239,68,68,0)} }
+        .sensor-icon { font-size: 1.8rem; margin-bottom: 6px; }
+        .sensor-label { font-size: 0.72rem; font-weight: 500; color: var(--safe-text-secondary); letter-spacing: 0.02em; }
+        .sensor-state { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.04em; margin-top: 2px; color: var(--safe-text-muted); }
+        .sensor-item.active .sensor-state { color: var(--safe-accent); }
+        body.danger-mode .sensor-item.active .sensor-state { color: var(--danger-accent); }
+
+        /* ===== GAUGE CHART CARDS ===== */
+        .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+        @media (max-width: 700px) { .charts-row { grid-template-columns: 1fr; } }
+
+        .gauge-card { background: var(--safe-card); border: 1px solid var(--safe-border); border-radius: var(--radius-lg); padding: 20px 22px; transition: all var(--transition); box-shadow: var(--shadow-sm); }
+        body.danger-mode .gauge-card { border-color: var(--danger-border); }
+
+        .gauge-wrapper { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        .gauge-canvas-wrap { position: relative; width: 180px; height: 100px; }
+        .gauge-canvas-wrap canvas { position: absolute; top: 0; left: 0; }
+        .gauge-value { font-size: 2rem; font-weight: 700; letter-spacing: -0.03em; color: var(--safe-text); font-family: var(--mono); margin-top: -4px; }
+        .gauge-unit { font-size: 0.75rem; color: var(--safe-text-muted); font-weight: 500; letter-spacing: 0.04em; }
+        .gauge-range { display: flex; justify-content: space-between; width: 100%; font-size: 0.65rem; color: var(--safe-text-muted); font-family: var(--mono); margin-top: 2px; padding: 0 4px; }
+
+        /* ===== LINE CHART CARDS ===== */
+        .linechart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+        @media (max-width: 700px) { .linechart-row { grid-template-columns: 1fr; } }
+
+        .line-card { background: var(--safe-card); border: 1px solid var(--safe-border); border-radius: var(--radius-lg); padding: 20px 22px; transition: all var(--transition); box-shadow: var(--shadow-sm); }
+        body.danger-mode .line-card { border-color: var(--danger-border); }
+        .line-card canvas { width: 100% !important; height: 160px !important; }
+
+        .stat-row { display: flex; gap: 12px; margin-top: 10px; }
+        .stat-badge { flex: 1; text-align: center; background: var(--safe-bg); border: 1px solid var(--safe-border); border-radius: var(--radius-sm); padding: 8px 10px; }
+        body.danger-mode .stat-badge { background: var(--danger-bg); border-color: var(--danger-border); }
+        .stat-badge .s-label { font-size: 0.62rem; color: var(--safe-text-muted); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; }
+        .stat-badge .s-val { font-family: var(--mono); font-size: 0.85rem; font-weight: 600; color: var(--safe-text); margin-top: 2px; }
+
+        /* ===== LOG ===== */
+        .log-card { grid-column: 1 / -1; }
+        .log-list { max-height: 240px; overflow-y: auto; list-style: none; }
+        .log-list::-webkit-scrollbar { width: 5px; }
+        .log-list::-webkit-scrollbar-thumb { background: var(--safe-border); border-radius: 10px; }
+        .log-item { padding: 10px 14px; border-bottom: 1px solid var(--safe-border); display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 0.78rem; }
+        .log-time { color: var(--safe-text-muted); font-family: var(--mono); font-size: 0.7rem; min-width: 70px; }
+        .log-msg { flex: 1; color: var(--safe-text-secondary); font-weight: 400; }
+        .log-badge { padding: 4px 10px; border-radius: 12px; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.03em; }
+        .log-badge.safe { background: var(--safe-green-soft); color: var(--safe-green); }
+        .log-badge.danger { background: var(--danger-accent-soft); color: var(--danger-accent); animation: badgeBlink 1s ease-in-out infinite; }
+        .log-badge.info { background: var(--safe-accent-soft); color: var(--safe-accent); }
+        @keyframes badgeBlink { 0%,100%{opacity:1}50%{opacity:0.4} }
+
+        /* ===== ALERT ===== */
+        .alert-overlay { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 999; background: #ef4444; color: #fff; padding: 14px 28px; border-radius: 30px; font-weight: 700; font-size: 0.9rem; letter-spacing: 0.04em; display: none; box-shadow: 0 10px 40px rgba(239,68,68,0.5); animation: alertBounce 0.5s ease-out; text-align: center; }
+        .alert-overlay.show { display: block; }
+        @keyframes alertBounce { 0%{transform:translateX(-50%) translateY(-80px);opacity:0}60%{transform:translateX(-50%) translateY(8px)}100%{transform:translateX(-50%) translateY(0);opacity:1} }
+    </style>
+</head>
+<body class="dark">
+    <div class="alert-overlay" id="alertOverlay">⚠️ PERINGATAN! API TERDETEKSI</div>
+
+    <div class="app">
+        <!-- HEADER -->
+        <div class="header">
+            <div class="brand">
+                <div class="brand-icon">🛡️</div>
+                <div class="brand-text">
+                    <h2>PyroGuard</h2>
+                    <span>Fire Detection System</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <span class="clock" id="liveClock">00:00:00</span>
+                <div class="status-pill" id="statusPill">
+                    <span class="status-dot connecting" id="statusDot"></span>
+                    <span id="statusLabel">Menghubungkan...</span>
+                </div>
+                <div class="theme-switch" id="themeToggle" onclick="toggleTheme()"></div>
+            </div>
+        </div>
+
+        <!-- HERO -->
+        <div class="hero" id="heroSection">
+            <div class="hero-icon safe-icon" id="heroIcon">🛡️</div>
+            <div class="hero-status safe" id="heroStatus">MENGHUBUNGKAN</div>
+            <div class="hero-subtitle" id="heroSubtitle">Menunggu data dari Firebase...</div>
+            <div class="hero-time" id="heroTime">Update terakhir: —</div>
+            <div class="raw-data-box" id="rawDataBox" style="display:none;"></div>
+            <div class="firebase-status" id="firebaseStatus">🔄 Menghubungkan ke Firebase Realtime Database...</div>
+        </div>
+
+        <!-- SENSOR -->
+        <div style="margin-bottom:14px;">
+            <div class="card" style="max-width:100%;">
+                <div class="card-header">📡 Monitoring Sensor</div>
+                <div class="sensor-grid">
+                    <div class="sensor-item" id="sensorFlame">
+                        <div class="sensor-icon">🔥</div>
+                        <div class="sensor-label">Flame Sensor</div>
+                        <div class="sensor-state">Menunggu...</div>
+                    </div>
+                    <div class="sensor-item" id="sensorLED">
+                        <div class="sensor-icon">💡</div>
+                        <div class="sensor-label">LED</div>
+                        <div class="sensor-state">Menunggu...</div>
+                    </div>
+                    <div class="sensor-item" id="sensorFan">
+                        <div class="sensor-icon">🌀</div>
+                        <div class="sensor-label">Kipas</div>
+                        <div class="sensor-state">Menunggu...</div>
+                    </div>
+                    <div class="sensor-item" id="sensorBuzzer">
+                        <div class="sensor-icon">🔔</div>
+                        <div class="sensor-label">Buzzer</div>
+                        <div class="sensor-state">Menunggu...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- GAUGE CHARTS: Suhu & Kelembaban -->
+        <div class="charts-row">
+            <div class="gauge-card">
+                <div class="card-header">🌡️ Suhu Saat Ini</div>
+                <div class="gauge-wrapper">
+                    <div class="gauge-canvas-wrap">
+                        <canvas id="gaugeTemp" width="180" height="100"></canvas>
+                    </div>
+                    <div class="gauge-value" id="tempVal">—</div>
+                    <div class="gauge-unit">°C · Suhu Udara</div>
+                    <div class="gauge-range">
+                        <span>0°C</span>
+                        <span>50°C</span>
+                    </div>
+                </div>
+            </div>
+            <div class="gauge-card">
+                <div class="card-header">💧 Kelembaban Saat Ini</div>
+                <div class="gauge-wrapper">
+                    <div class="gauge-canvas-wrap">
+                        <canvas id="gaugeHum" width="180" height="100"></canvas>
+                    </div>
+                    <div class="gauge-value" id="humVal">—</div>
+                    <div class="gauge-unit">% · Kelembaban Relatif</div>
+                    <div class="gauge-range">
+                        <span>0%</span>
+                        <span>100%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- LINE CHARTS: Grafik Tren -->
+        <div class="linechart-row">
+            <div class="line-card">
+                <div class="card-header">📈 Grafik Suhu (Sesi Ini)</div>
+                <canvas id="chartTemp"></canvas>
+                <div class="stat-row">
+                    <div class="stat-badge"><div class="s-label">Min</div><div class="s-val" id="tempMin">—</div></div>
+                    <div class="stat-badge"><div class="s-label">Avg</div><div class="s-val" id="tempAvg">—</div></div>
+                    <div class="stat-badge"><div class="s-label">Max</div><div class="s-val" id="tempMax">—</div></div>
+                </div>
+            </div>
+            <div class="line-card">
+                <div class="card-header">📈 Grafik Kelembaban (Sesi Ini)</div>
+                <canvas id="chartHum"></canvas>
+                <div class="stat-row">
+                    <div class="stat-badge"><div class="s-label">Min</div><div class="s-val" id="humMin">—</div></div>
+                    <div class="stat-badge"><div class="s-label">Avg</div><div class="s-val" id="humAvg">—</div></div>
+                    <div class="stat-badge"><div class="s-label">Max</div><div class="s-val" id="humMax">—</div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- INFO SISTEM + LOG (paling bawah) -->
+        <div class="charts-row" style="margin-bottom:0;">
+            <div class="card">
+                <div class="card-header">ℹ️ Informasi Sistem</div>
+                <div style="display:flex;flex-direction:column;gap:8px;font-size:0.78rem;">
+                    <div style="display:flex;justify-content:space-between;"><span style="color:var(--safe-text-muted)">Mikrokontroler</span><span style="font-weight:600;">NodeMCU ESP8266</span></div>
+                    <div style="display:flex;justify-content:space-between;"><span style="color:var(--safe-text-muted)">Sensor Suhu</span><span style="font-weight:600;">DHT11</span></div>
+                    <div style="display:flex;justify-content:space-between;"><span style="color:var(--safe-text-muted)">Sensor Api</span><span style="font-weight:600;">Flame (Active LOW)</span></div>
+                    <div style="display:flex;justify-content:space-between;"><span style="color:var(--safe-text-muted)">Database</span><span style="font-weight:600;">Firebase RTDB</span></div>
+                    <div style="display:flex;justify-content:space-between;"><span style="color:var(--safe-text-muted)">Path DB</span><span style="font-weight:600;">/fire_detection</span></div>
+                    <div style="display:flex;justify-content:space-between;"><span style="color:var(--safe-text-muted)">Mode</span><span style="font-weight:600;" id="sysMode">🌙 Dark</span></div>
+                    <div style="display:flex;justify-content:space-between;"><span style="color:var(--safe-text-muted)">Firebase</span><span style="font-weight:600;" id="sysConn">Menghubungkan...</span></div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-header">📋 Log Aktivitas</div>
+                <ul class="log-list" id="logList">
+                    <li class="log-item">
+                        <span class="log-time">--:--:--</span>
+                        <span class="log-msg">Menunggu koneksi Firebase...</span>
+                        <span class="log-badge info">INIT</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBa1zpmaKke9my_jqydjSwV0f6IcRBhBC4",
+            authDomain: "fire-detection-iot-a8c5a.firebaseapp.com",
+            databaseURL: "https://fire-detection-iot-a8c5a-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "fire-detection-iot-a8c5a",
+            storageBucket: "fire-detection-iot-a8c5a.firebasestorage.app",
+            messagingSenderId: "46567333304",
+            appId: "1:46567333304:web:98f64d630148618ea4834d"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // Listen ke semua data /fire_detection sekaligus
+        onValue(ref(db, '/fire_detection'), (snap) => {
+            const data = snap.val();
+            console.log('📡 /fire_detection:', data);
+            if (data) window.handleFirebaseAll(data);
+        }, (err) => window.handleFirebaseError(err.message));
+
+        console.log('%c🔥 PyroGuard %cFire Detection System', 'color:#ef4444;font-weight:bold;', 'color:#6b7280;');
+    </script>
+
+    <script>
+        // ========== STATE ==========
+        let isDark = true;
+        let previousFireState = null;
+        let firebaseConnected = false;
+
+        // Histori data untuk grafik (maks 30 titik)
+        const MAX_POINTS = 30;
+        const tempHistory = { labels: [], data: [] };
+        const humHistory  = { labels: [], data: [] };
+
+        const $ = (s) => document.querySelector(s);
+
+        // ========== CLOCK ==========
+        function updateClock() {
+            $('#liveClock').textContent = new Date().toLocaleTimeString('id-ID', { hour12: false });
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // ========== THEME ==========
+        function toggleTheme() {
+            isDark = !isDark;
+            document.body.classList.toggle('dark', isDark);
+            $('#sysMode').textContent = isDark ? '🌙 Dark' : '☀️ Light';
+            updateChartTheme();
+        }
+        window.toggleTheme = toggleTheme;
+
+        // ========== GAUGE CHART (half-donut) ==========
+        function drawGauge(canvasId, value, min, max, color) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const W = 180, H = 100;
+            ctx.clearRect(0, 0, W, H);
+
+            const cx = W / 2, cy = H - 10;
+            const r = 75;
+            const startA = Math.PI;
+            const endA = 2 * Math.PI;
+            const pct = Math.max(0, Math.min(1, (value - min) / (max - min)));
+            const valA = Math.PI + pct * Math.PI;
+
+            // Track
+            ctx.beginPath();
+            ctx.arc(cx, cy, r, startA, endA);
+            ctx.lineWidth = 14;
+            ctx.strokeStyle = isDark ? '#272a36' : '#e5e7ec';
+            ctx.lineCap = 'round';
+            ctx.stroke();
+
+            // Fill
+            ctx.beginPath();
+            ctx.arc(cx, cy, r, startA, valA);
+            ctx.lineWidth = 14;
+            ctx.strokeStyle = color;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+        }
+
+        // ========== LINE CHARTS ==========
+        const chartDefaults = (label, color) => ({
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label,
+                    data: [],
+                    borderColor: color,
+                    backgroundColor: color + '22',
+                    borderWidth: 2,
+                    pointRadius: 3,
+                    pointBackgroundColor: color,
+                    fill: true,
+                    tension: 0.4,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 400 },
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: {
+                        ticks: { color: '#6b7084', font: { size: 10, family: "'JetBrains Mono', monospace" }, maxTicksLimit: 6 },
+                        grid: { color: isDark ? '#272a36' : '#e5e7ec' }
+                    },
+                    y: {
+                        ticks: { color: '#6b7084', font: { size: 10, family: "'JetBrains Mono', monospace" } },
+                        grid: { color: isDark ? '#272a36' : '#e5e7ec' }
+                    }
+                }
+            }
+        });
+
+        const ctxTemp = document.getElementById('chartTemp').getContext('2d');
+        const ctxHum  = document.getElementById('chartHum').getContext('2d');
+        const lineTemp = new Chart(ctxTemp, chartDefaults('Suhu (°C)', '#f97316'));
+        const lineHum  = new Chart(ctxHum,  chartDefaults('Kelembaban (%)', '#3b82f6'));
+
+        function updateChartTheme() {
+            const gridColor = isDark ? '#272a36' : '#e5e7ec';
+            const tickColor = '#6b7084';
+            [lineTemp, lineHum].forEach(chart => {
+                chart.options.scales.x.grid.color = gridColor;
+                chart.options.scales.y.grid.color = gridColor;
+                chart.options.scales.x.ticks.color = tickColor;
+                chart.options.scales.y.ticks.color = tickColor;
+                chart.update();
+            });
+        }
+
+        function pushPoint(history, chart, value, label) {
+            history.labels.push(label);
+            history.data.push(value);
+            if (history.labels.length > MAX_POINTS) {
+                history.labels.shift();
+                history.data.shift();
+            }
+            chart.data.labels = [...history.labels];
+            chart.data.datasets[0].data = [...history.data];
+            chart.update('none');
+        }
+
+        function updateStats(data, minId, avgId, maxId, unit) {
+            if (!data.length) return;
+            const mn = Math.min(...data).toFixed(1);
+            const mx = Math.max(...data).toFixed(1);
+            const av = (data.reduce((a,b)=>a+b,0)/data.length).toFixed(1);
+            $(minId).textContent = mn + unit;
+            $(avgId).textContent = av + unit;
+            $(maxId).textContent = mx + unit;
+        }
+
+        // ========== PARSE NILAI DARI STRING ==========
+        function parseNum(str) {
+            if (!str) return null;
+            const m = String(str).match(/[\d.]+/);
+            return m ? parseFloat(m[0]) : null;
+        }
+
+        // ========== FIREBASE MAIN HANDLER ==========
+        window.handleFirebaseAll = function(data) {
+            if (!firebaseConnected) {
+                firebaseConnected = true;
+                updateConnectionUI(true);
+                addLog('SISTEM', '✅ Berhasil terhubung ke Firebase Realtime Database');
+                $('#sysConn').textContent = '✅ Terhubung';
+            }
+
+            const statusStr = data.status ? String(data.status) : null;
+            const tempStr   = data.temperature ? String(data.temperature) : null;
+            const humStr    = data.humidity    ? String(data.humidity)    : null;
+
+            // --- Tampilkan raw status ---
+            if (statusStr) {
+                $('#rawDataBox').style.display = 'inline-block';
+                $('#rawDataBox').textContent = '📦 ' + statusStr;
+            }
+
+            // --- Suhu & Kelembaban ---
+            const tempVal = parseNum(tempStr);
+            const humVal  = parseNum(humStr);
+
+            const now = new Date();
+            const timeLabel = now.toLocaleTimeString('id-ID', { hour12: false });
+
+            if (tempVal !== null) {
+                $('#tempVal').textContent = tempVal.toFixed(1) + '°';
+                drawGauge('gaugeTemp', tempVal, 0, 50, '#f97316');
+                pushPoint(tempHistory, lineTemp, tempVal, timeLabel);
+                updateStats(tempHistory.data, '#tempMin', '#tempAvg', '#tempMax', '°C');
+                addLog('AMAN', `🌡️ Suhu: ${tempVal.toFixed(1)} °C`);
+            }
+
+            if (humVal !== null) {
+                $('#humVal').textContent = humVal.toFixed(1) + '%';
+                drawGauge('gaugeHum', humVal, 0, 100, '#3b82f6');
+                pushPoint(humHistory, lineHum, humVal, timeLabel);
+                updateStats(humHistory.data, '#humMin', '#humAvg', '#humMax', '%');
+                addLog('AMAN', `💧 Kelembaban: ${humVal.toFixed(1)} %`);
+            }
+
+            // --- Status kebakaran ---
+            if (statusStr) {
+                const lower = statusStr.toLowerCase();
+                const isFireDetected = lower.includes('ada api') || lower.includes('(1)') || lower.includes('fire') || lower.includes('detected') || lower.includes('bahaya');
+                const isSafe = lower.includes('aman') || lower.includes('(0)') || lower.includes('no fire') || lower.includes('safe');
+                let timestamp = null;
+                const pipeMatch = statusStr.match(/\|\s*(.+)$/);
+                if (pipeMatch) timestamp = pipeMatch[1].trim();
+                setFire(isFireDetected && !isSafe, timestamp);
+            }
+        };
+
+        window.handleFirebaseError = function(errMsg) {
+            firebaseConnected = false;
+            updateConnectionUI(false);
+            addLog('ERROR', '❌ Firebase Error: ' + errMsg);
+            $('#sysConn').textContent = '❌ Error';
+        };
+
+        // ========== SET FIRE STATE ==========
+        function setFire(fire, timestamp = null) {
+            const body = document.body;
+            if (fire) {
+                body.classList.add('danger-mode');
+                $('#heroIcon').className = 'hero-icon danger-icon';
+                $('#heroIcon').textContent = '🔥';
+                $('#heroStatus').className = 'hero-status danger';
+                $('#heroStatus').textContent = 'KEBAKARAN TERDETEKSI';
+                $('#heroSubtitle').textContent = '⚠️ Segera lakukan evakuasi dan tindakan darurat!';
+                if (previousFireState !== true) {
+                    const overlay = $('#alertOverlay');
+                    overlay.classList.add('show');
+                    setTimeout(() => overlay.classList.remove('show'), 5000);
+                    playAlarm();
+                    addLog('KEBAKARAN', '🔥 Api terdeteksi oleh flame sensor');
+                }
+                setSensorActive($('#sensorFlame'), true, 'Aktif (Api)');
+                setSensorActive($('#sensorLED'), true, 'ON');
+                setSensorActive($('#sensorFan'), true, 'ON');
+                setSensorActive($('#sensorBuzzer'), true, 'ON');
+            } else {
+                body.classList.remove('danger-mode');
+                $('#heroIcon').className = 'hero-icon safe-icon';
+                $('#heroIcon').textContent = '🛡️';
+                $('#heroStatus').className = 'hero-status safe';
+                $('#heroStatus').textContent = 'AMAN';
+                $('#heroSubtitle').textContent = 'Semua sistem beroperasi normal';
+                $('#alertOverlay').classList.remove('show');
+                setSensorActive($('#sensorFlame'), false, 'Tidak Aktif');
+                setSensorActive($('#sensorLED'), false, 'OFF');
+                setSensorActive($('#sensorFan'), false, 'OFF');
+                setSensorActive($('#sensorBuzzer'), false, 'OFF');
+                if (previousFireState === true) addLog('AMAN', '✅ Api telah padam, area kembali aman');
+                else if (previousFireState === null) addLog('AMAN', '✅ Data awal diterima — kondisi aman');
+            }
+            previousFireState = fire;
+            updateHeroTime(timestamp);
+        }
+
+        function setSensorActive(el, active, text) {
+            if (!el) return;
+            el.classList.toggle('active', active);
+            el.querySelector('.sensor-state').textContent = text;
+        }
+
+        function updateHeroTime(timestamp = null) {
+            const heroTime = $('#heroTime');
+            if (timestamp) {
+                heroTime.textContent = '📅 Update: ' + timestamp;
+                heroTime.style.color = 'var(--safe-green)';
+            } else {
+                heroTime.textContent = '📅 Update: ' + new Date().toLocaleString('id-ID', { hour12: false });
+                heroTime.style.color = 'var(--safe-text-muted)';
+            }
+        }
+
+        function updateConnectionUI(connected) {
+            const dot = $('#statusDot');
+            const label = $('#statusLabel');
+            const fbStatus = $('#firebaseStatus');
+            if (connected) {
+                dot.classList.remove('connecting', 'offline');
+                label.textContent = 'Terhubung';
+                fbStatus.textContent = '✅ Terhubung — Listening ke /fire_detection';
+                fbStatus.style.color = 'var(--safe-green)';
+            } else {
+                dot.classList.add('offline');
+                dot.classList.remove('connecting');
+                label.textContent = 'Terputus';
+                fbStatus.textContent = '❌ Terputus dari Firebase';
+                fbStatus.style.color = 'var(--danger-accent)';
+            }
+        }
+
+        function addLog(status, msg) {
+            const time = new Date().toTimeString().substring(0, 8);
+            const badgeMap = {
+                'KEBAKARAN': ['danger', 'BAHAYA'],
+                'AMAN':      ['safe',   'AMAN'],
+                'SISTEM':    ['info',   'SISTEM'],
+                'INFO':      ['info',   'INFO'],
+                'ERROR':     ['danger', 'ERROR'],
+            };
+            const [badgeClass, badgeText] = badgeMap[status] || ['info', status];
+            const li = document.createElement('li');
+            li.className = 'log-item';
+            li.innerHTML = `<span class="log-time">${time}</span><span class="log-msg">${msg}</span><span class="log-badge ${badgeClass}">${badgeText}</span>`;
+            const list = $('#logList');
+            list.insertBefore(li, list.firstChild);
+            while (list.children.length > 50) list.removeChild(list.lastChild);
+        }
+
+        function playAlarm() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain); gain.connect(ctx.destination);
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(600, ctx.currentTime);
+                osc.frequency.linearRampToValueAtTime(1000, ctx.currentTime + 0.4);
+                gain.gain.setValueAtTime(0.25, ctx.currentTime);
+                osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 1.2);
+            } catch (_) {}
+        }
+
+        // Init gauges kosong
+        drawGauge('gaugeTemp', 0, 0, 50, '#f97316');
+        drawGauge('gaugeHum', 0, 0, 100, '#3b82f6');
+
+        addLog('SISTEM', '🚀 PyroGuard diinisialisasi — listening /fire_detection');
+        addLog('SISTEM', '📡 Menghubungkan ke Firebase...');
+        updateHeroTime();
+    </script>
+</body>
+</html>
