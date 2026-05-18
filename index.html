@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PyroGuard — Fire Detection System</title>
+    <title>IgniSense — Fire Detection System</title>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
     <style>
@@ -210,7 +210,7 @@
             <div class="brand">
                 <div class="brand-icon">🛡️</div>
                 <div class="brand-text">
-                    <h2>PyroGuard</h2>
+                    <h2>IgniSense</h2>
                     <span>Fire Detection System</span>
                 </div>
             </div>
@@ -369,7 +369,7 @@
             if (data) window.handleFirebaseAll(data);
         }, (err) => window.handleFirebaseError(err.message));
 
-        console.log('%c🔥 PyroGuard %cFire Detection System', 'color:#ef4444;font-weight:bold;', 'color:#6b7280;');
+        console.log('%c🔥 IgniSense %cFire Detection System', 'color:#ef4444;font-weight:bold;', 'color:#6b7280;');
     </script>
 
     <script>
@@ -523,12 +523,12 @@
                 $('#sysConn').textContent = '✅ Terhubung';
             }
 
-            const statusStr = data.status ? String(data.status) : null;
+            const statusStr = data.status != null ? String(data.status).trim() : null;
             const tempStr   = data.temperature ? String(data.temperature) : null;
             const humStr    = data.humidity    ? String(data.humidity)    : null;
 
             // --- Tampilkan raw status ---
-            if (statusStr) {
+            if (statusStr !== null) {
                 $('#rawDataBox').style.display = 'inline-block';
                 $('#rawDataBox').textContent = '📦 ' + statusStr;
             }
@@ -557,14 +557,13 @@
             }
 
             // --- Status kebakaran ---
-            if (statusStr) {
-                const lower = statusStr.toLowerCase();
-                const isFireDetected = lower.includes('ada api') || lower.includes('(1)') || lower.includes('fire') || lower.includes('detected') || lower.includes('bahaya');
-                const isSafe = lower.includes('aman') || lower.includes('(0)') || lower.includes('no fire') || lower.includes('safe');
+            if (statusStr !== null) {
+                const numericStatus = Number(statusStr.replace(/[^0-9]/g, ''));
+                const isFireDetected = numericStatus === 1;
                 let timestamp = null;
                 const pipeMatch = statusStr.match(/\|\s*(.+)$/);
                 if (pipeMatch) timestamp = pipeMatch[1].trim();
-                setFire(isFireDetected && !isSafe, timestamp);
+                setFire(isFireDetected, timestamp);
             }
         };
 
@@ -686,7 +685,7 @@
         drawGauge('gaugeTemp', 0, 0, 50, '#f97316');
         drawGauge('gaugeHum', 0, 0, 100, '#3b82f6');
 
-        addLog('SISTEM', '🚀 PyroGuard diinisialisasi — listening /fire_detection');
+        addLog('SISTEM', '🚀 IgniSense diinisialisasi — listening /fire_detection');
         addLog('SISTEM', '📡 Menghubungkan ke Firebase...');
         updateHeroTime();
     </script>
