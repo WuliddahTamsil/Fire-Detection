@@ -1,0 +1,20 @@
+{
+  "name": "IgniSense",
+  "short_name": "IgniSense",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f8f9fb",
+  "theme_color": "#3b82f6",
+  "icons": [
+    {
+      "src": "IgniSense.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "IgniSense.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
